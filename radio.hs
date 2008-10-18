@@ -42,10 +42,6 @@ makeHTTPRequest domain path = (
     ++ "Hostname: " ++ domain ++ "\r\n"
     ++ "User-Agent: radio-player-haskell\r\n\r\n" )
 
-kalxGet = "GET /kalx-128.mp3 HTTP/1.0\r\nHostname: icecast.media.berkeley.edu\r\nUser-Agent: eklitzke-haskell\r\n\r\n"
-
-digitalisGet = "GET / HTTP/1.0\r\nHostname: fx.somafm.com\r\nUser-Agent: eklitzke-haskell\r\n\r\n"
-
 -- skip over the HTTP headers
 skipResponseHeaders :: Handle -> IO ()
 skipResponseHeaders hdl = do
@@ -80,8 +76,6 @@ main = do
 
     let httpReq = makeHTTPRequest domain path
 
-    --sock <- connectTo "icecast.media.berkeley.edu" $ PortNumber 8000
-    --writeHTTPRequest sock kalxGet
     sock <- connectTo domain $ PortNumber $ fromIntegral (read port :: Int)
     writeHTTPRequest sock httpReq
     skipResponseHeaders sock
@@ -97,7 +91,6 @@ main = do
     pipeline <- Gst.pipelineNew "audio-player"
     source <- mkElement $ Gst.elementFactoryMake "filesrc" $ Just "file-source"
     decoder <- mkElement $ Gst.elementFactoryMake "mad" $ Just "mad-decoder"
-    conv <- mkElement $ Gst.elementFactoryMake "audioconvert" $ Just "convert"
     sink <- mkElement $ Gst.elementFactoryMake "pulsesink" $ Just "pulse-output"
 
     G.objectSetPropertyString "location" source fifoName
@@ -116,11 +109,10 @@ main = do
             _ -> return ()
            return True
 
-    mapM_ (Gst.binAdd $ Gst.castToBin pipeline) [source, decoder, conv, sink]
+    mapM_ (Gst.binAdd $ Gst.castToBin pipeline) [source, decoder, sink]
 
     Gst.elementLink source decoder
-    Gst.elementLink decoder conv
-    Gst.elementLink conv sink
+    Gst.elementLink decoder sink
 
     G.timeoutAdd (return True) 100
 
