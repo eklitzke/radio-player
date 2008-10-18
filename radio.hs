@@ -1,12 +1,12 @@
 -- Simple program to play an Internet radio stream using the GHC GStreamer
--- bindings. Most of the GStreamer boiler plate was copied from the demo app in
+-- bindings. Most of the GStreamer boilerplate was copied from the demo app in
 -- the gtk2hs source code.
 --
 -- For now, the steam must be of mpeg audio (i.e. mp3).
 
 import Network
 import System.IO
-import qualified Data.ByteString.Lazy as BSL
+import qualified Data.ByteString.Lazy as BS
 
 import System.Environment
 
@@ -48,7 +48,7 @@ makeHTTPRequest domain path = (
     ++ "Hostname: " ++ domain ++ "\r\n"
     ++ "User-Agent: radio-player <http://github.com/eklitzke/radio-player>\r\n\r\n" )
 
--- skip over the HTTP headers
+-- skip over HTTP headers
 skipResponseHeaders :: Handle -> IO ()
 skipResponseHeaders hdl = do
     ln <- hGetLine hdl
@@ -61,13 +61,17 @@ writeHTTPRequest sock s = do
     hPutStr sock s
     hFlush sock
 
+-- Read from a handle (lazily) and write it out to another handle (eagerly).
+-- This is meant to be called as a separate thread with forkIO
 writeToFifo :: Handle -> Handle -> IO ()
 writeToFifo sock out = do
-    s <- BSL.hGetContents sock
-    BSL.hPutStr out $! s
+    s <- BS.hGetContents sock
+    BS.hPutStr out s
 
 main = do
-
+    -- Parse the command line options. Two formats are accepted:
+    --  1) radio <preset-name>
+    --  2) radio <domain> <path> <port>
     args <- getArgs
     [domain, path, port] <- return $ case args of
         [s] -> case s of
@@ -76,21 +80,27 @@ main = do
             "kalx" -> ["icecast.media.berkeley.edu", "/kalx-128.mp3", "8000"]
         _ -> args
 
+    -- Create a named pipe if it doesn't exist. For some reason, this doesn't
+    -- work right on my laptop (no matter what I do, the file created doesn't
+    -- have the fifo bit). For now, you just need to create it yourself with
+    -- mkfifo.
     exists <- fileExist fifoName
     if exists
         then return $ Left ()
         else return $ Right $ createNamedPipe fifoName fifoMode
 
-    let httpReq = makeHTTPRequest domain path
-
+    -- Connect to the mpeg stream, and get ready to read mpeg data
     sock <- connectTo domain $ PortNumber $ fromIntegral (read port :: Int)
-    writeHTTPRequest sock httpReq
+    writeHTTPRequest sock $ makeHTTPRequest domain path
     skipResponseHeaders sock
 
+    -- Open the named pipe in read/write mode
     fifo <- openFile fifoName ReadWriteMode
 
+    -- Copy the contents of the socket to the named pipe in a separate "thread"
     myThreadId <- forkIO $ writeToFifo sock fifo
 
+    -- GStreamer boilerplate
     Gst.init
     mainLoop <- G.mainLoopNew Nothing True
 
