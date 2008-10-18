@@ -71,8 +71,9 @@ main = do
     args <- getArgs
     [domain, path, port] <- return $ case args of
         [s] -> case s of
-            "kalx" -> ["icecast.media.berkeley.edu", "/kalx-128.mp3", "8000"]
             "digitalis" -> ["fx.somafm.com", "/", "8900"]
+            "groovesalad" -> ["fx.somafm.com", "/", "8032"]
+            "kalx" -> ["icecast.media.berkeley.edu", "/kalx-128.mp3", "8000"]
         _ -> args
 
     exists <- fileExist fifoName
