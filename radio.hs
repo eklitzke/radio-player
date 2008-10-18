@@ -99,26 +99,7 @@ main = do
     Gst.elementLink decoder conv
     Gst.elementLink conv sink
 
-{-
-    G.on parser Gst.elementPadAdded $ \pad ->
-       do sinkPad <- Gst.elementGetStaticPad decoder "sink"
-          Gst.padLink pad $ fromJust sinkPad
-          return ()
-          -}
-
-    flip G.timeoutAdd 100 $ do
-     position <- Gst.elementQueryPosition pipeline Gst.FormatTime
-     duration <- Gst.elementQueryDuration pipeline Gst.FormatTime
-     case position of
-       Just (_, position') ->
-           case duration of
-             Just (_, duration') -> return ()
-             Nothing -> do
-               putStr "no information\r"
-       Nothing -> do
-         putStr "no information\r"
-     hFlush stdout
-     return True
+    flip G.timeoutAdd 100 $ return True
 
     Gst.elementSetState pipeline Gst.StatePlaying
 
