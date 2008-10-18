@@ -46,7 +46,7 @@ makeHTTPRequest :: String -> String -> String
 makeHTTPRequest domain path = (
        "GET " ++ path ++ " HTTP/1.0\r\n"
     ++ "Hostname: " ++ domain ++ "\r\n"
-    ++ "User-Agent: radio-player-haskell\r\n\r\n" )
+    ++ "User-Agent: radio-player <http://github.com/eklitzke/radio-player>\r\n\r\n" )
 
 -- skip over the HTTP headers
 skipResponseHeaders :: Handle -> IO ()
@@ -88,7 +88,6 @@ main = do
     skipResponseHeaders sock
 
     fifo <- openFile fifoName ReadWriteMode
-    --fifo <- openFile "/tmp/radio.fifo" ReadWriteMode
 
     myThreadId <- forkIO $ writeToFifo sock fifo
 
