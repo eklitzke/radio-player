@@ -2,27 +2,30 @@ import Network
 import System.IO
 import qualified Data.ByteString.Lazy as BSL
 
+import System.Environment
+
 import qualified Media.Streaming.GStreamer as Gst
 import qualified System.Glib as G
 import qualified System.Glib.MainLoop as G
 import qualified System.Glib.Properties as G
 
---import System.Posix.IO
 import System.Posix.Files
 import System.Posix.Types
-import Data.Bits
 
 import System.Exit
 import Data.Maybe
 
 import Control.Concurrent
 
+(.|.) = unionFileModes
+
 fifoName :: String
 fifoName = "/tmp/radio-player.fifo"
 
 -- The mode for a fifo with perms prw------- (on Linux, 10600)
 fifoMode :: FileMode
-fifoMode = namedPipeMode `xor` ownerReadMode `xor` ownerWriteMode
+fifoMode = namedPipeMode .|. ownerReadMode .|. ownerWriteMode
+--fifoMode = ownerReadMode .|. ownerWriteMode
 
 mkElement action =
     do element <- action
@@ -33,7 +36,15 @@ mkElement action =
              do hPutStrLn stderr "could not create all GStreamer elements\n"
                 exitFailure
 
+makeHTTPRequest :: String -> String -> String
+makeHTTPRequest domain path = (
+       "GET " ++ path ++ " HTTP/1.0\r\n"
+    ++ "Hostname: " ++ domain ++ "\r\n"
+    ++ "User-Agent: radio-player-haskell\r\n\r\n" )
+
 kalxGet = "GET /kalx-128.mp3 HTTP/1.0\r\nHostname: icecast.media.berkeley.edu\r\nUser-Agent: eklitzke-haskell\r\n\r\n"
+
+digitalisGet = "GET / HTTP/1.0\r\nHostname: fx.somafm.com\r\nUser-Agent: eklitzke-haskell\r\n\r\n"
 
 -- skip over the HTTP headers
 skipResponseHeaders :: Handle -> IO ()
@@ -55,19 +66,28 @@ writeToFifo sock out = do
 
 main = do
 
+    args <- getArgs
+    [domain, path, port] <- case args of
+        [s] -> return $ case s of
+            "kalx" -> ["icecast.media.berkeley.edu", "/kalx-128.mp3", "8000"]
+            "digitalis" -> ["fx.somafm.com", "/", "8900"]
+        _ -> return args
+
     exists <- fileExist fifoName
     if exists
         then return $ Left ()
         else return $ Right $ createNamedPipe fifoName fifoMode
 
-    --createNamedPipe "/tmp/radio.fifo" namedPipeMode
+    let httpReq = makeHTTPRequest domain path
 
-    sock <- connectTo "icecast.media.berkeley.edu" $ PortNumber 8000
-    writeHTTPRequest sock kalxGet
+    --sock <- connectTo "icecast.media.berkeley.edu" $ PortNumber 8000
+    --writeHTTPRequest sock kalxGet
+    sock <- connectTo domain $ PortNumber $ fromIntegral (read port :: Int)
+    writeHTTPRequest sock httpReq
     skipResponseHeaders sock
 
-    --fifo <- openFile fifoName ReadWriteMode
-    fifo <- openFile "/tmp/radio.fifo" ReadWriteMode
+    fifo <- openFile fifoName ReadWriteMode
+    --fifo <- openFile "/tmp/radio.fifo" ReadWriteMode
 
     myThreadId <- forkIO $ writeToFifo sock fifo
 
@@ -80,7 +100,7 @@ main = do
     conv <- mkElement $ Gst.elementFactoryMake "audioconvert" $ Just "convert"
     sink <- mkElement $ Gst.elementFactoryMake "pulsesink" $ Just "pulse-output"
 
-    G.objectSetPropertyString "location" source "/tmp/radio.fifo"
+    G.objectSetPropertyString "location" source fifoName
 
     bus <- Gst.pipelineGetBus (Gst.castToPipeline pipeline)
     Gst.busAddWatch bus G.priorityDefault $ \bus message ->
