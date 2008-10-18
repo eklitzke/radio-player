@@ -1,4 +1,8 @@
 The intention is that this will be a small program that lets you listen to
 Internet radio using the GHC gstreamer bindings.
 
+My plan is to try to get KALX working first, since it's not multipart (and
+therefore should be easier), and then to see if I can get it to support SomaFM
+(which ough to be considerably more complex).
+
 This is just for fun/learning.
