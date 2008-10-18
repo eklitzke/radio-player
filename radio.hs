@@ -5,6 +5,7 @@ import System.IO
 import System.IO.Error (isEOFError)
 import Control.Exception (finally, catch, Exception(..))
 import qualified Data.ByteString.Lazy as BSL
+import qualified Data.ByteString as BS
 
 import qualified Media.Streaming.GStreamer as Gst
 import qualified System.Glib as G
@@ -13,9 +14,16 @@ import qualified System.Glib.Properties as G
 import qualified System.Glib.GError as G
 import qualified System.Glib.Signals as G
 
+import System.Posix.IO
+
 import System.Exit
 import Text.Printf
 import Data.Maybe
+
+import Control.Concurrent
+import Control.Monad
+
+import GHC.Word
 
 mkElement action =
     do element <- action
@@ -41,7 +49,23 @@ writeHTTPRequest sock s = do
     hPutStr sock s
     hFlush sock
 
+writeToFifo :: Handle -> Handle -> IO ()
+writeToFifo sock out = do
+    s <- BSL.hGetContents sock
+    BSL.hPutStr out $! s
+
 main = do
+    
+    --createNamedPipe "/tmp/radio.fifo" namedPipeMode
+
+    sock <- connectTo "icecast.media.berkeley.edu" $ PortNumber 8000
+    writeHTTPRequest sock kalxGet
+    skipResponseHeaders sock
+
+    fif <- openFile "/tmp/radio.fifo" ReadWriteMode
+
+    myThreadId <- forkIO $ writeToFifo sock fif
+
     Gst.init
     mainLoop <- G.mainLoopNew Nothing True
 
@@ -104,11 +128,3 @@ main = do
     Gst.elementSetState pipeline Gst.StateNull
 
     return ()
-{-
-
-    sock <- connectTo "icecast.media.berkeley.edu" $ PortNumber 8000
-    writeHTTPRequest sock kalxGet
-    skipResponseHeaders sock
-
-    BSL.hGetContents sock >>= BSL.putStr
--}

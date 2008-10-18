@@ -11,6 +11,15 @@ Current Status
 ==============
 The GStreamer bindings are almost totally undocumented, but there was a demo
 program in the Gtk2Hs darcs tree, and with that I've gotten a really crude
-player up and running (yes, it plays audio!). Currently one program reads from
-KALX and writes to a fifo, and the other program reads from the fifo and plays
-the contents, but I plan to fix that soon.
+player up and running (yes, it plays audio!). Currently the radio program will
+write to a named pipe "/tmp/radio.fifo" in a forkIO, and the GStreamer code
+will read from this pipe.
+
+This is kind of ugly. Try as I might, I wasn't able to figure out how to get
+the radio player to work without a temporary file. GStreamer has a mode where
+it can read from a file descriptor, but what would always happen is it would
+play for a few seconds and then stop. My suspicion is that these first few
+seconds were the buffered content, and GStreamer didn't know how to make the
+socket fetch more data.
+
+I hope to get something working without temporary files...
