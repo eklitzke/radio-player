@@ -1,29 +1,18 @@
-import Prelude hiding (catch)
-
 import Network
 import System.IO
-import System.IO.Error (isEOFError)
-import Control.Exception (finally, catch, Exception(..))
 import qualified Data.ByteString.Lazy as BSL
-import qualified Data.ByteString as BS
 
 import qualified Media.Streaming.GStreamer as Gst
 import qualified System.Glib as G
 import qualified System.Glib.MainLoop as G
 import qualified System.Glib.Properties as G
-import qualified System.Glib.GError as G
-import qualified System.Glib.Signals as G
 
-import System.Posix.IO
+--import System.Posix.IO
 
 import System.Exit
-import Text.Printf
 import Data.Maybe
 
 import Control.Concurrent
-import Control.Monad
-
-import GHC.Word
 
 mkElement action =
     do element <- action
@@ -106,5 +95,3 @@ main = do
     G.mainLoopRun mainLoop
 
     Gst.elementSetState pipeline Gst.StateNull
-
-    return ()
