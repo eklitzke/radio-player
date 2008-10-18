@@ -67,11 +67,11 @@ writeToFifo sock out = do
 main = do
 
     args <- getArgs
-    [domain, path, port] <- case args of
-        [s] -> return $ case s of
+    [domain, path, port] <- return $ case args of
+        [s] -> case s of
             "kalx" -> ["icecast.media.berkeley.edu", "/kalx-128.mp3", "8000"]
             "digitalis" -> ["fx.somafm.com", "/", "8900"]
-        _ -> return args
+        _ -> args
 
     exists <- fileExist fifoName
     if exists
