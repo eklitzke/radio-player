@@ -1,0 +1,4 @@
+The intention is that this will be a small program that lets you listen to
+Internet radio using the GHC gstreamer bindings.
+
+This is just for fun/learning.
