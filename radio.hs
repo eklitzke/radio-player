@@ -1,3 +1,9 @@
+-- Simple program to play an Internet radio stream using the GHC GStreamer
+-- bindings. Most of the GStreamer boiler plate was copied from the demo app in
+-- the gtk2hs source code.
+--
+-- For now, the steam must be of mpeg audio (i.e. mp3).
+
 import Network
 import System.IO
 import qualified Data.ByteString.Lazy as BSL
