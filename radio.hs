@@ -112,8 +112,7 @@ main = do
      case position of
        Just (_, position') ->
            case duration of
-             Just (_, duration') -> do
-               printf "%10d / %10d\r" (position' `div` Gst.second) (duration' `div` Gst.second)
+             Just (_, duration') -> return ()
              Nothing -> do
                putStr "no information\r"
        Nothing -> do
