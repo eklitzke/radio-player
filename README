@@ -6,3 +6,11 @@ therefore should be easier), and then to see if I can get it to support SomaFM
 (which ough to be considerably more complex).
 
 This is just for fun/learning.
+
+Current Status
+==============
+The GStreamer bindings are almost totally undocumented, but there was a demo
+program in the Gtk2Hs darcs tree, and with that I've gotten a really crude
+player up and running (yes, it plays audio!). Currently one program reads from
+KALX and writes to a fifo, and the other program reads from the fifo and plays
+the contents, but I plan to fix that soon.
