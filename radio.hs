@@ -8,11 +8,21 @@ import qualified System.Glib.MainLoop as G
 import qualified System.Glib.Properties as G
 
 --import System.Posix.IO
+import System.Posix.Files
+import System.Posix.Types
+import Data.Bits
 
 import System.Exit
 import Data.Maybe
 
 import Control.Concurrent
+
+fifoName :: String
+fifoName = "/tmp/radio-player.fifo"
+
+-- The mode for a fifo with perms prw------- (on Linux, 10600)
+fifoMode :: FileMode
+fifoMode = namedPipeMode `xor` ownerReadMode `xor` ownerWriteMode
 
 mkElement action =
     do element <- action
@@ -44,16 +54,22 @@ writeToFifo sock out = do
     BSL.hPutStr out $! s
 
 main = do
-    
+
+    exists <- fileExist fifoName
+    if exists
+        then return $ Left ()
+        else return $ Right $ createNamedPipe fifoName fifoMode
+
     --createNamedPipe "/tmp/radio.fifo" namedPipeMode
 
     sock <- connectTo "icecast.media.berkeley.edu" $ PortNumber 8000
     writeHTTPRequest sock kalxGet
     skipResponseHeaders sock
 
-    fif <- openFile "/tmp/radio.fifo" ReadWriteMode
+    --fifo <- openFile fifoName ReadWriteMode
+    fifo <- openFile "/tmp/radio.fifo" ReadWriteMode
 
-    myThreadId <- forkIO $ writeToFifo sock fif
+    myThreadId <- forkIO $ writeToFifo sock fifo
 
     Gst.init
     mainLoop <- G.mainLoopNew Nothing True
@@ -63,8 +79,6 @@ main = do
     decoder <- mkElement $ Gst.elementFactoryMake "mad" $ Just "mad-decoder"
     conv <- mkElement $ Gst.elementFactoryMake "audioconvert" $ Just "convert"
     sink <- mkElement $ Gst.elementFactoryMake "pulsesink" $ Just "pulse-output"
-
-    let elements = [source, decoder, conv, sink]
 
     G.objectSetPropertyString "location" source "/tmp/radio.fifo"
 
@@ -82,13 +96,13 @@ main = do
             _ -> return ()
            return True
 
-    mapM_ (Gst.binAdd $ Gst.castToBin pipeline) elements
+    mapM_ (Gst.binAdd $ Gst.castToBin pipeline) [source, decoder, conv, sink]
 
     Gst.elementLink source decoder
     Gst.elementLink decoder conv
     Gst.elementLink conv sink
 
-    flip G.timeoutAdd 100 $ return True
+    G.timeoutAdd (return True) 100
 
     Gst.elementSetState pipeline Gst.StatePlaying
 
